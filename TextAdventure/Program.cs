@@ -1,11 +1,49 @@
-﻿namespace TextAdventure;
+﻿using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
+namespace TextAdventure;
 
 public class Program
 {
-    public static void Main()
+    private static string _jwtToken = "";
+    private const string ApiBase = "https://localhost:7065/api/auth";
+
+    public static async Task Main()
     {
+        var handler = new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback =
+                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        };
+        var client = new HttpClient(handler);
+
+        Console.WriteLine("=== TEXT ADVENTURE ===");
+
+        bool ingelogd = false;
+        while (!ingelogd)
+        {
+            Console.WriteLine("1. Inloggen");
+            Console.WriteLine("2. Registreren");
+            Console.Write("Kies een optie: ");
+            var keuze = Console.ReadLine()?.Trim();
+
+            if (keuze == "1")
+            {
+                ingelogd = await Login(client);
+            }
+            else if (keuze == "2")
+            {
+                await Register(client);
+            }
+            else
+            {
+                Console.WriteLine("Ongeldige keuze. Typ 1 of 2.");
+            }
+        }
+
         var world = GameSetup.CreateWorld();
-        Console.WriteLine("Welkom bij de C# Text Adventure!");
+        Console.WriteLine("\nWelkom bij de C# Text Adventure!");
         world.CurrentRoom.ShowDescription(world.Inventory);
 
         while (!world.IsGameOver && !world.IsWon)
@@ -48,5 +86,81 @@ public class Program
         }
 
         Console.WriteLine(world.IsWon ? "\n--- GEWONNEN ---" : "\n--- GAME OVER ---");
+    }
+
+    private static async Task<bool> Login(HttpClient client)
+    {
+        Console.Write("Gebruikersnaam: ");
+        var username = Console.ReadLine()?.Trim();
+        Console.Write("Wachtwoord: ");
+        var password = Console.ReadLine()?.Trim();
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            Console.WriteLine("Gebruikersnaam en wachtwoord mogen niet leeg zijn.");
+            return false;
+        }
+
+        try
+        {
+            var body = JsonSerializer.Serialize(new { username, password });
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync($"{ApiBase}/login", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var doc = JsonDocument.Parse(json);
+                _jwtToken = doc.RootElement.GetProperty("token").GetString() ?? "";
+
+                // JWT meesturen via Authorization: Bearer header (cursus les 4)
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _jwtToken);
+
+                Console.WriteLine("Inloggen geslaagd!\n");
+                return true;
+            }
+            else
+            {
+                var fout = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Inloggen mislukt: {fout}");
+                return false;
+            }
+        }
+        catch (Exception)
+        {
+            // Fail securely - geen stacktrace tonen (cursus secure coding principe)
+            Console.WriteLine("Verbindingsfout met de API. Probeer opnieuw.");
+            return false;
+        }
+    }
+
+    private static async Task Register(HttpClient client)
+    {
+        Console.Write("Kies een gebruikersnaam: ");
+        var username = Console.ReadLine()?.Trim();
+        Console.Write("Kies een wachtwoord: ");
+        var password = Console.ReadLine()?.Trim();
+
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            Console.WriteLine("Gebruikersnaam en wachtwoord mogen niet leeg zijn.");
+            return;
+        }
+
+        try
+        {
+            var body = JsonSerializer.Serialize(new { username, password });
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var response = await client.PostAsync($"{ApiBase}/register", content);
+            var result = await response.Content.ReadAsStringAsync();
+            Console.WriteLine(response.IsSuccessStatusCode ?
+                "Registratie geslaagd! Je kan nu inloggen." :
+                $"Registratie mislukt: {result}");
+        }
+        catch (Exception)
+        {
+            Console.WriteLine("Verbindingsfout met de API. Probeer opnieuw.");
+        }
     }
 }
