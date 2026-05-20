@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "TextAdventureAPI": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:49399;http://localhost:49400"
+    }
+  }
+}

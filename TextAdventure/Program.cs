@@ -7,7 +7,7 @@ namespace TextAdventure;
 public class Program
 {
     private static string _jwtToken = "";
-    private const string ApiBase = "https://localhost:7065/api/auth";
+    private const string ApiBase = "https://localhost:49399/api/auth";
 
     public static async Task Main()
     {
@@ -113,7 +113,6 @@ public class Program
                 var doc = JsonDocument.Parse(json);
                 _jwtToken = doc.RootElement.GetProperty("token").GetString() ?? "";
 
-                // JWT meesturen via Authorization: Bearer header (cursus les 4)
                 client.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", _jwtToken);
 
@@ -129,7 +128,6 @@ public class Program
         }
         catch (Exception)
         {
-            // Fail securely - geen stacktrace tonen (cursus secure coding principe)
             Console.WriteLine("Verbindingsfout met de API. Probeer opnieuw.");
             return false;
         }
