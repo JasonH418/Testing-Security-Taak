@@ -37,6 +37,15 @@ namespace TextAdventureAPI
                 });
 
             builder.Services.AddAuthorization();
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
             builder.Services.AddSingleton<IAuthService, AuthService>();
             builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
             builder.Services.AddSingleton<IRoomService, RoomService>();
@@ -77,6 +86,7 @@ namespace TextAdventureAPI
             }
 
             app.UseHttpsRedirection();
+            app.UseCors();
             app.UseAuthentication();
             app.UseAuthorization();
 
@@ -142,7 +152,7 @@ namespace TextAdventureAPI
                 }
             }).RequireAuthorization();
 
-            // KEYSHARE
+            // KEYSHARE - geen auth vereist
             app.MapGet("/api/rooms/{roomId}/keyshare", (int roomId, IRoomService roomService) =>
             {
                 try
@@ -154,7 +164,7 @@ namespace TextAdventureAPI
                 {
                     return Results.NotFound(ex.Message);
                 }
-            }).RequireAuthorization();
+            });
 
             // UNLOCK
             app.MapPost("/api/rooms/unlock", (UnlockRequest request, IRoomService roomService) =>

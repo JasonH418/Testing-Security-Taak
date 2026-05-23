@@ -1,6 +1,4 @@
 ﻿using System.Net.Http.Headers;
-using System.Security.Cryptography.Pkcs;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 
@@ -128,27 +126,13 @@ public class Program
                 return;
             }
 
-            var encFile = $"room{roomId}.enc";
-            if (!File.Exists(encFile))
-            {
-                Console.WriteLine($"Bestand {encFile} niet gevonden.");
-                return;
-            }
-
-            var encBase64 = File.ReadAllText(encFile).Trim();
-            var cms = new EnvelopedCms();
-            cms.Decode(Convert.FromBase64String(encBase64));
-            var store = new X509Store(StoreLocation.CurrentUser);
-            store.Open(OpenFlags.ReadOnly);
-            cms.Decrypt(store.Certificates);
-            store.Close();
-
-            var plaintext = Encoding.UTF8.GetString(cms.ContentInfo.Content);
-            Console.WriteLine($"\nKamerinhoud: {plaintext}");
+            var unlockJson = await unlockResponse.Content.ReadAsStringAsync();
+            var kamerInhoud = JsonDocument.Parse(unlockJson).RootElement.GetProperty("content").GetString() ?? "";
+            Console.WriteLine($"\nKamerinhoud: {kamerInhoud}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Decryptie mislukt: {ex.Message}");
+            Console.WriteLine($"Fout: {ex.Message}");
         }
     }
 

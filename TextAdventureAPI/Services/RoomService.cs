@@ -13,17 +13,17 @@ namespace TextAdventureAPI.Services
             { 1, "dragonslayer" },
             { 2, "shadowkey" }
         };
-       
+
         private static readonly Dictionary<int, string> RoomKeyshares = new()
         {
             { 1, "KEYSHARE-ROOM1-ABC123" },
             { 2, "KEYSHARE-ROOM2-XYZ789" }
         };
-        
-        private static readonly Dictionary<int, string> EncryptedRooms = new()
+
+        private static readonly Dictionary<int, string> RoomPlaintexts = new()
         {
-            { 1, EncryptContent("Je bevindt je in de geheime wapenkamer. Je vindt een magisch zwaard!") },
-            { 2, EncryptContent("Je bevindt je in de schatkamer. Je vindt de eindbaas sleutel!") }
+            { 1, "Je bevindt je in de geheime wapenkamer. Je vindt een magisch zwaard!" },
+            { 2, "Je bevindt je in de schatkamer. Je vindt de eindbaas sleutel!" }
         };
 
         public string GetKeyshare(int roomId)
@@ -39,7 +39,9 @@ namespace TextAdventureAPI.Services
             if (keyshare != RoomKeyshares[roomId]) return null;
             if (passphrase != RoomPassphrases[roomId]) return null;
 
-            return DecryptContent(EncryptedRooms[roomId]);
+            var plaintext = RoomPlaintexts[roomId];
+            var encrypted = EncryptContent(plaintext);
+            return DecryptContent(encrypted);
         }
 
         private static string EncryptContent(string plaintext)
@@ -66,7 +68,8 @@ namespace TextAdventureAPI.Services
             var store = new X509Store(StoreLocation.CurrentUser);
             store.Open(OpenFlags.ReadOnly);
             foreach (var cert in store.Certificates)
-                if (cert.HasPrivateKey) { store.Close(); return cert; }
+                if (cert.HasPrivateKey && cert.GetKeyAlgorithm() == "1.2.840.113549.1.1.1")
+                { store.Close(); return cert; }
             store.Close();
             return null;
         }
