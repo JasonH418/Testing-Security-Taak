@@ -101,17 +101,17 @@ public class Program
 
         try
         {
-            // 1. Keyshare ophalen bij API
             var roomId = world.CurrentRoom.RoomId.Value;
-            var response = await client.GetAsync($"{RoomsBase}/{roomId}/keyshare");
-            if (!response.IsSuccessStatusCode)
+
+            // 1. Keyshare ophalen
+            var ksResponse = await client.GetAsync($"{RoomsBase}/{roomId}/keyshare");
+            if (!ksResponse.IsSuccessStatusCode)
             {
-                Console.WriteLine("Keyshare ophalen mislukt. Heb je de juiste rol?");
+                Console.WriteLine("Keyshare ophalen mislukt.");
                 return;
             }
-            var json = await response.Content.ReadAsStringAsync();
-            var doc = JsonDocument.Parse(json);
-            var keyshare = doc.RootElement.GetProperty("keyshare").GetString() ?? "";
+            var ksJson = await ksResponse.Content.ReadAsStringAsync();
+            var keyshare = JsonDocument.Parse(ksJson).RootElement.GetProperty("keyshare").GetString() ?? "";
 
             // 2. Passphrase vragen
             Console.Write("Voer de passphrase in: ");
@@ -122,11 +122,15 @@ public class Program
                 return;
             }
 
-            // 3. Sleutel genereren: SHA256(keyshare + ":" + passphrase)
-            var keyInput = $"{keyshare}:{passphrase}";
-            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(keyInput));
-            var hashHex = Convert.ToHexString(hash);
-            Console.WriteLine($"[DEBUG] Sleutel hash: {hashHex}");
+            // 3. Verificatie via API
+            var body = JsonSerializer.Serialize(new { roomId, keyshare, passphrase });
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var unlockResponse = await client.PostAsync($"{RoomsBase}/unlock", content);
+            if (!unlockResponse.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Ongeldige passphrase.");
+                return;
+            }
 
             // 4. .enc bestand decrypten via CMS
             var encFile = $"room{roomId}.enc";
@@ -139,7 +143,6 @@ public class Program
             var encBase64 = File.ReadAllText(encFile).Trim();
             var cms = new EnvelopedCms();
             cms.Decode(Convert.FromBase64String(encBase64));
-
             var store = new X509Store(StoreLocation.CurrentUser);
             store.Open(OpenFlags.ReadOnly);
             cms.Decrypt(store.Certificates);
