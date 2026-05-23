@@ -1,5 +1,4 @@
 ﻿using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -103,7 +102,6 @@ public class Program
         {
             var roomId = world.CurrentRoom.RoomId.Value;
 
-            // 1. Keyshare ophalen
             var ksResponse = await client.GetAsync($"{RoomsBase}/{roomId}/keyshare");
             if (!ksResponse.IsSuccessStatusCode)
             {
@@ -113,7 +111,6 @@ public class Program
             var ksJson = await ksResponse.Content.ReadAsStringAsync();
             var keyshare = JsonDocument.Parse(ksJson).RootElement.GetProperty("keyshare").GetString() ?? "";
 
-            // 2. Passphrase vragen
             Console.Write("Voer de passphrase in: ");
             var passphrase = Console.ReadLine()?.Trim() ?? "";
             if (string.IsNullOrWhiteSpace(passphrase))
@@ -122,7 +119,6 @@ public class Program
                 return;
             }
 
-            // 3. Verificatie via API
             var body = JsonSerializer.Serialize(new { roomId, keyshare, passphrase });
             var content = new StringContent(body, Encoding.UTF8, "application/json");
             var unlockResponse = await client.PostAsync($"{RoomsBase}/unlock", content);
@@ -132,7 +128,6 @@ public class Program
                 return;
             }
 
-            // 4. .enc bestand decrypten via CMS
             var encFile = $"room{roomId}.enc";
             if (!File.Exists(encFile))
             {
@@ -149,7 +144,7 @@ public class Program
             store.Close();
 
             var plaintext = Encoding.UTF8.GetString(cms.ContentInfo.Content);
-            Console.WriteLine($"\n🔓 Kamerinhoud: {plaintext}");
+            Console.WriteLine($"\nKamerinhoud: {plaintext}");
         }
         catch (Exception ex)
         {
@@ -182,7 +177,6 @@ public class Program
                 var doc = JsonDocument.Parse(json);
                 _jwtToken = doc.RootElement.GetProperty("token").GetString() ?? "";
 
-                // Rol uit JWT token halen
                 var parts = _jwtToken.Split('.');
                 if (parts.Length > 1)
                 {
@@ -190,10 +184,14 @@ public class Program
                     payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
                     var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
                     var tokenDoc = JsonDocument.Parse(decoded);
-                    var role = tokenDoc.RootElement
-                        .GetProperty("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
-                        .GetString() ?? "";
-                    _isAdmin = role.Equals("admin", StringComparison.OrdinalIgnoreCase);
+                    foreach (var prop in tokenDoc.RootElement.EnumerateObject())
+                    {
+                        if (prop.Name.Contains("role", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _isAdmin = prop.Value.GetString()?.Equals("admin", StringComparison.OrdinalIgnoreCase) ?? false;
+                            break;
+                        }
+                    }
                 }
 
                 client.DefaultRequestHeaders.Authorization =
