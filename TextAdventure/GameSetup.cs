@@ -1,7 +1,7 @@
 ﻿namespace TextAdventure;
 public static class GameSetup
 {
-    public static Building CreateWorld()
+    public static Building CreateWorld(bool isAdmin = false)
     {
         var start = new Room("Start", "Je staat in het midden van een stoffige kerker.");
         var links = new Room("Dodelijke Gang", "Zodra je de kamer binnenstapt, valt het plafond naar beneden!") { IsDeadly = true };
@@ -9,10 +9,8 @@ public static class GameSetup
         var boven = new Room("De Uitgang", "Gefeliciteerd! Je hebt de weg naar buiten gevonden.") { IsWin = true, RequiredItem = "Sleutel" };
         var beneden = new Room("Kelder", "Het is hier koud en vochtig.");
         var monsterKamer = new Room("Monsterkamer", "Een donker hol dat naar rottend vlees stinkt.") { MonsterAlive = true };
-
         rechts.AddItem(new Item("Sleutel", "Een gouden sleutel."));
         beneden.AddItem(new Item("Zwaard", "Een vlijmscherp zwaard."));
-
         start.AddExit(Direction.w, links);
         start.AddExit(Direction.e, rechts);
         start.AddExit(Direction.n, boven);
@@ -21,7 +19,6 @@ public static class GameSetup
         beneden.AddExit(Direction.s, monsterKamer);
         monsterKamer.AddExit(Direction.n, beneden);
         rechts.AddExit(Direction.w, start);
-
-        return new Building(start);
+        return new Building(start, isAdmin);
     }
 }

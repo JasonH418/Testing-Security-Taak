@@ -7,6 +7,7 @@ namespace TextAdventure;
 public class Program
 {
     private static string _jwtToken = "";
+    private static bool _isAdmin = false;
     private const string ApiBase = "https://localhost:49399/api/auth";
 
     public static async Task Main()
@@ -29,21 +30,16 @@ public class Program
             var keuze = Console.ReadLine()?.Trim();
 
             if (keuze == "1")
-            {
                 ingelogd = await Login(client);
-            }
             else if (keuze == "2")
-            {
                 await Register(client);
-            }
             else
-            {
                 Console.WriteLine("Ongeldige keuze. Typ 1 of 2.");
-            }
         }
 
-        var world = GameSetup.CreateWorld();
+        var world = GameSetup.CreateWorld(_isAdmin);
         Console.WriteLine("\nWelkom bij de C# Text Adventure!");
+        if (_isAdmin) Console.WriteLine("[ADMIN] Noclip actief!");
         world.CurrentRoom.ShowDescription(world.Inventory);
 
         while (!world.IsGameOver && !world.IsWon)
@@ -112,6 +108,21 @@ public class Program
                 var json = await response.Content.ReadAsStringAsync();
                 var doc = JsonDocument.Parse(json);
                 _jwtToken = doc.RootElement.GetProperty("token").GetString() ?? "";
+
+                // Rol uit JWT token halen
+                var parts = _jwtToken.Split('.');
+                if (parts.Length > 1)
+                {
+                    var payload = parts[1];
+                    // Base64 padding herstellen
+                    payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+                    var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+                    var tokenDoc = JsonDocument.Parse(decoded);
+                    var role = tokenDoc.RootElement
+                        .GetProperty("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                        .GetString() ?? "";
+                    _isAdmin = role.Equals("admin", StringComparison.OrdinalIgnoreCase);
+                }
 
                 client.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", _jwtToken);
