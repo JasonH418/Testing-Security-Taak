@@ -1,4 +1,7 @@
 ﻿using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Security.Cryptography.Pkcs;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 
@@ -9,6 +12,7 @@ public class Program
     private static string _jwtToken = "";
     private static bool _isAdmin = false;
     private const string ApiBase = "https://localhost:49399/api/auth";
+    private const string RoomsBase = "https://localhost:49399/api/rooms";
 
     public static async Task Main()
     {
@@ -53,7 +57,7 @@ public class Program
             switch (cmd)
             {
                 case "help":
-                    Console.WriteLine("Commando's: help, look, inventory, go [n|e|s|w], take [item], fight, quit");
+                    Console.WriteLine("Commando's: help, look, inventory, go [n|e|s|w], take [item], fight, unlock, quit");
                     break;
                 case "look":
                     world.CurrentRoom.ShowDescription(world.Inventory);
@@ -73,6 +77,9 @@ public class Program
                 case "fight":
                     world.Fight();
                     break;
+                case "unlock":
+                    await UnlockRoom(client, world);
+                    break;
                 case "quit":
                     return;
                 default:
@@ -82,6 +89,69 @@ public class Program
         }
 
         Console.WriteLine(world.IsWon ? "\n--- GEWONNEN ---" : "\n--- GAME OVER ---");
+    }
+
+    private static async Task UnlockRoom(HttpClient client, Building world)
+    {
+        if (world.CurrentRoom.RoomId == null)
+        {
+            Console.WriteLine("Deze kamer heeft geen versleutelde inhoud.");
+            return;
+        }
+
+        try
+        {
+            // 1. Keyshare ophalen bij API
+            var roomId = world.CurrentRoom.RoomId.Value;
+            var response = await client.GetAsync($"{RoomsBase}/{roomId}/keyshare");
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Keyshare ophalen mislukt. Heb je de juiste rol?");
+                return;
+            }
+            var json = await response.Content.ReadAsStringAsync();
+            var doc = JsonDocument.Parse(json);
+            var keyshare = doc.RootElement.GetProperty("keyshare").GetString() ?? "";
+
+            // 2. Passphrase vragen
+            Console.Write("Voer de passphrase in: ");
+            var passphrase = Console.ReadLine()?.Trim() ?? "";
+            if (string.IsNullOrWhiteSpace(passphrase))
+            {
+                Console.WriteLine("Passphrase mag niet leeg zijn.");
+                return;
+            }
+
+            // 3. Sleutel genereren: SHA256(keyshare + ":" + passphrase)
+            var keyInput = $"{keyshare}:{passphrase}";
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(keyInput));
+            var hashHex = Convert.ToHexString(hash);
+            Console.WriteLine($"[DEBUG] Sleutel hash: {hashHex}");
+
+            // 4. .enc bestand decrypten via CMS
+            var encFile = $"room{roomId}.enc";
+            if (!File.Exists(encFile))
+            {
+                Console.WriteLine($"Bestand {encFile} niet gevonden.");
+                return;
+            }
+
+            var encBase64 = File.ReadAllText(encFile).Trim();
+            var cms = new EnvelopedCms();
+            cms.Decode(Convert.FromBase64String(encBase64));
+
+            var store = new X509Store(StoreLocation.CurrentUser);
+            store.Open(OpenFlags.ReadOnly);
+            cms.Decrypt(store.Certificates);
+            store.Close();
+
+            var plaintext = Encoding.UTF8.GetString(cms.ContentInfo.Content);
+            Console.WriteLine($"\n🔓 Kamerinhoud: {plaintext}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Decryptie mislukt: {ex.Message}");
+        }
     }
 
     private static async Task<bool> Login(HttpClient client)
@@ -114,7 +184,6 @@ public class Program
                 if (parts.Length > 1)
                 {
                     var payload = parts[1];
-                    // Base64 padding herstellen
                     payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
                     var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
                     var tokenDoc = JsonDocument.Parse(decoded);
