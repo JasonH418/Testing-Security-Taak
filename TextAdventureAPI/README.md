@@ -15,14 +15,14 @@ Uitbreiding van het Text Adventure spel met security features: gebruikersbeheer 
 - Windows (voor X.509 certificaatstore)
 
 ### API starten
-\\\ash
+```bash
 dotnet run --project TextAdventureAPI
-\\\
+```
 
 ### Console spel starten
-\\\ash
+```bash
 dotnet run --project TextAdventure
-\\\
+```
 
 ## API Endpoints
 | Endpoint | Methode | Beschrijving |
@@ -42,11 +42,19 @@ dotnet run --project TextAdventure
 - Rollen: Player en Admin
 - Admin heeft noclip (kan door vergrendelde deuren)
 - X.509/CMS encryptie voor kamers (.enc bestanden)
-- JWT signing key via environment variable JWT_SECRET
+- JWT signing key via appsettings.json (niet hardcoded)
 
 ## Versleutelde kamers
-- room1.enc — geheime wapenkamer
-- room2.enc — schatkamer
+De `.enc` bestanden worden gegenereerd met het `GenerateEnc` project. Dit project gebruikt het X.509 certificaat van de huidige machine om de kamers te versleutelen.
+
+### .enc bestanden genereren
+```bash
+dotnet run --project GenerateEnc
+```
+Dit maakt `room1.enc` en `room2.enc` aan in de root van het project. Deze bestanden zijn machine-specifiek — ze kunnen alleen gedecrypteerd worden op de machine waarop ze gegenereerd zijn.
+
+- room1.enc — geheime wapenkamer (passphrase: dragonslayer)
+- room2.enc — schatkamer (passphrase: shadowkey)
 
 ## Swagger
-Beschikbaar op http://localhost:49400/swagger tijdens development.
+Beschikbaar op https://localhost:49399/swagger tijdens development.
