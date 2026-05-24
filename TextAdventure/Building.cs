@@ -4,15 +4,13 @@ public class Building
     public Room CurrentRoom { get; private set; }
     public Inventory Inventory { get; } = new();
     public bool IsGameOver { get; private set; }
-    public bool IsWon { get; private set; }
+    public bool IsWon { get; set; }
     private readonly bool _isAdmin;
-
     public Building(Room startRoom, bool isAdmin = false)
     {
         CurrentRoom = startRoom;
         _isAdmin = isAdmin;
     }
-
     public void Move(Direction dir)
     {
         if (!CurrentRoom.Exits.TryGetValue(dir, out var nextRoom))
@@ -49,7 +47,6 @@ public class Building
         if (!IsGameOver && !IsWon) CurrentRoom.ShowDescription(Inventory);
         else Console.WriteLine(CurrentRoom.Description);
     }
-
     public void Fight()
     {
         if (!CurrentRoom.MonsterAlive)

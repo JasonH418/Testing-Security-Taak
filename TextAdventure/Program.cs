@@ -129,6 +129,12 @@ public class Program
             var unlockJson = await unlockResponse.Content.ReadAsStringAsync();
             var kamerInhoud = JsonDocument.Parse(unlockJson).RootElement.GetProperty("content").GetString() ?? "";
             Console.WriteLine($"\nKamerinhoud: {kamerInhoud}");
+
+            if (roomId == 2)
+            {
+                Console.WriteLine("Je hebt de deur geopend en ontsnapt! Gefeliciteerd!");
+                world.IsWon = true;
+            }
         }
         catch (Exception ex)
         {

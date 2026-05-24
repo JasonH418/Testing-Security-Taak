@@ -22,8 +22,8 @@ namespace TextAdventureAPI.Services
 
         private static readonly Dictionary<int, string> RoomPlaintexts = new()
         {
-            { 1, "Je bevindt je in de geheime wapenkamer. Je vindt een magisch zwaard!" },
-            { 2, "Je bevindt je in de schatkamer. Je vindt de eindbaas sleutel!" }
+            { 1, "Je opent de kist en vindt een geheime boodschap: de sleutel was hier al die tijd!" },
+            { 2, "De deur gaat open. Vrijheid! Je hebt het avontuur voltooid!" }
         };
 
         public string GetKeyshare(int roomId)

@@ -6,7 +6,7 @@ public static class GameSetup
         var start = new Room("Start", "Je staat in het midden van een stoffige kerker.");
         var links = new Room("Dodelijke Gang", "Zodra je de kamer binnenstapt, valt het plafond naar beneden!") { IsDeadly = true };
         var rechts = new Room("Schatkamer", "Een kleine kamer met een kist op de grond.") { RoomId = 1 };
-        var boven = new Room("De Uitgang", "Gefeliciteerd! Je hebt de weg naar buiten gevonden.") { IsWin = true, RequiredItem = "Sleutel", RoomId = 2 };
+        var boven = new Room("De Uitgang", "Je staat voor een grote deur. Ontsleutel hem om te ontsnappen.") { RequiredItem = "Sleutel", RoomId = 2 };
         var beneden = new Room("Kelder", "Het is hier koud en vochtig.");
         var monsterKamer = new Room("Monsterkamer", "Een donker hol dat naar rottend vlees stinkt.") { MonsterAlive = true };
         rechts.AddItem(new Item("Sleutel", "Een gouden sleutel."));
@@ -19,6 +19,7 @@ public static class GameSetup
         beneden.AddExit(Direction.s, monsterKamer);
         monsterKamer.AddExit(Direction.n, beneden);
         rechts.AddExit(Direction.w, start);
+        boven.AddExit(Direction.s, start);
         return new Building(start, isAdmin);
     }
 }
