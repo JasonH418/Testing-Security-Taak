@@ -67,11 +67,9 @@ namespace TextAdventureAPI.Services
         {
             var store = new X509Store(StoreLocation.CurrentUser);
             store.Open(OpenFlags.ReadOnly);
-            foreach (var cert in store.Certificates)
-                if (cert.HasPrivateKey && cert.GetKeyAlgorithm() == "1.2.840.113549.1.1.1")
-                { store.Close(); return cert; }
+            var certs = store.Certificates.Find(X509FindType.FindBySubjectName, "localhost", false);
             store.Close();
-            return null;
+            return certs.Count > 0 ? certs[0] : null;
         }
     }
 }
