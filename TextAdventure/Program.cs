@@ -8,6 +8,8 @@ public class Program
 {
     private static string _jwtToken = "";
     private static bool _isAdmin = false;
+    private static int _loginPogingen = 0;
+    private const int MaxLoginPogingen = 3;
     private const string ApiBase = "https://localhost:49399/api/auth";
     private const string RoomsBase = "https://localhost:49399/api/rooms";
 
@@ -25,6 +27,12 @@ public class Program
         bool ingelogd = false;
         while (!ingelogd)
         {
+            if (_loginPogingen >= MaxLoginPogingen)
+            {
+                Console.WriteLine("Lockout na 3 mislukte logins. Sluit het programma en probeer later opnieuw.");
+                return;
+            }
+
             Console.WriteLine("1. Inloggen");
             Console.WriteLine("2. Registreren");
             Console.Write("Kies een optie: ");
@@ -163,6 +171,7 @@ public class Program
 
             if (response.IsSuccessStatusCode)
             {
+                _loginPogingen = 0;
                 var json = await response.Content.ReadAsStringAsync();
                 var doc = JsonDocument.Parse(json);
                 _jwtToken = doc.RootElement.GetProperty("token").GetString() ?? "";
@@ -192,8 +201,11 @@ public class Program
             }
             else
             {
-                var fout = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Inloggen mislukt: {fout}");
+                _loginPogingen++;
+                if (_loginPogingen >= MaxLoginPogingen)
+                    Console.WriteLine("Inloggen mislukt: Lockout na 3 mislukte logins");
+                else
+                    Console.WriteLine($"Inloggen mislukt: ({MaxLoginPogingen - _loginPogingen} poging(en) over)");
                 return false;
             }
         }
