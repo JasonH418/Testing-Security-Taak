@@ -21,8 +21,8 @@ namespace TextAdventureAPI
             var builder = WebApplication.CreateBuilder(args);
 
             var jwtKey = Encoding.UTF8.GetBytes(
-                Environment.GetEnvironmentVariable("JWT_SECRET")
-                ?? "supersecretkey12345supersecretkey12345");
+                builder.Configuration["JwtSettings:Secret"]
+                ?? throw new InvalidOperationException("JWT secret niet geconfigureerd."));
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
